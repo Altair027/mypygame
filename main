@@ -1,0 +1,194 @@
+# Simple Shooter Game
+
+# How to Play:
+# 1. Use the left and right arrow keys to move the spaceship horizontally.
+# 2. Press the spacebar to shoot bullets.
+# 3. Destroy asteroids and enemies to increase your score.
+# 4. Avoid letting enemies reach the bottom of the screen. If they do, the game is over.
+
+# Game Mechanics:
+# - The player's spaceship is controlled by arrow keys and can shoot bullets with the spacebar.
+# - Asteroids and enemies appear at regular intervals and move down the screen.
+# - When a bullet hits an asteroid or an enemy, both are removed from the screen, and the score increases.
+# - The speed of enemies increases as the player's score reaches certain thresholds.
+
+# The game will display "GAME OVER" when an enemy reaches the bottom of the screen and will then close after 2 seconds.
+
+
+import pygame
+import random
+import sys
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Simple Shooter")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+
+# Clock for controlling the frame rate
+clock = pygame.time.Clock()
+
+# Player setup
+player_size = (50, 30)
+player = pygame.Rect(WIDTH // 2 - player_size[0] // 2, HEIGHT - 50, *player_size)
+player_speed = 10  # Increased player speed
+
+# Bullet setup
+bullet_width = 5
+bullet_height = 10
+bullets = []
+bullet_speed = 7
+
+# Asteroid setup
+asteroid_size = (100, 100)
+asteroids = []
+asteroid_speed = 5
+asteroid_frequency = 25
+
+# Enemy setup
+enemy_size = (30, 30)
+enemies = []
+enemy_speed = 3  # Initial enemy speed (slow)
+enemy_frequency = 100  # Lower is more frequent
+
+# Score setup
+score = 0
+font = pygame.font.Font(None, 36)
+
+# Speed thresholds
+SPEED_THRESHOLDS = [10, 20, 30]  # Score thresholds for speed changes
+SPEED_LEVELS = [3, 6, 9]  # Corresponding speeds for the thresholds
+
+def draw_player():
+    pygame.draw.rect(screen, WHITE, player)
+
+def draw_bullets():
+    for bullet in bullets:
+        pygame.draw.rect(screen, RED, bullet)
+
+def draw_asteroids():
+    for asteroid in asteroids:
+        pygame.draw.rect(screen, BLACK, asteroid)
+
+def draw_enemies():
+    for enemy in enemies:
+        pygame.draw.rect(screen, GREEN, enemy)
+
+def draw_score():
+    score_text = font.render(f"Score: {score}", True, WHITE)
+    screen.blit(score_text, (10, 10))
+
+def move_player(keys):
+    if keys[pygame.K_LEFT] and player.left > 0:
+        player.x -= player_speed
+    if keys[pygame.K_RIGHT] and player.right < WIDTH:
+        player.x += player_speed
+
+def move_bullets():
+    global bullets
+    bullets = [bullet.move(0, -bullet_speed) for bullet in bullets if bullet.bottom > 0]
+
+def move_asteroids():
+    global asteroids
+    asteroids = [asteroid.move(0, asteroid_speed) for asteroid in asteroids if asteroid.top < HEIGHT]
+
+def move_enemies():
+    global enemies
+    enemies = [enemy.move(0, enemy_speed) for enemy in enemies if enemy.top < HEIGHT]
+
+def update_enemy_speed():
+    global enemy_speed
+    for threshold, speed in zip(SPEED_THRESHOLDS, SPEED_LEVELS):
+        if score >= threshold:
+            enemy_speed = speed
+
+def check_collisions():
+    global asteroids, bullets, enemies, score
+    for bullet in bullets:
+        for asteroid in asteroids:
+            if bullet.colliderect(asteroid):
+                bullets.remove(bullet)
+                asteroids.remove(asteroid)
+                score += 1  # Increase score for hitting an asteroid
+                update_enemy_speed()  # Update enemy speed based on score
+                break
+        for enemy in enemies:
+            if bullet.colliderect(enemy):
+                bullets.remove(bullet)
+                enemies.remove(enemy)
+                score += 1  # Increase score for hitting an enemy
+                update_enemy_speed()  # Update enemy speed based on score
+                break
+
+def check_game_over():
+    for enemy in enemies:
+        if enemy.bottom >= HEIGHT:
+            return True
+    return False
+
+def main():
+    global score
+    asteroid_timer = 0
+    enemy_timer = 0
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    bullet = pygame.Rect(player.centerx - bullet_width // 2, player.top - bullet_height, bullet_width, bullet_height)
+                    bullets.append(bullet)
+
+        keys = pygame.key.get_pressed()
+        move_player(keys)
+        move_bullets()
+        move_asteroids()
+        move_enemies()
+
+        if asteroid_timer % asteroid_frequency == 0:
+            x = random.randint(0, WIDTH - asteroid_size[0])
+            asteroid = pygame.Rect(x, -asteroid_size[1], *asteroid_size)
+            asteroids.append(asteroid)
+
+        if enemy_timer % enemy_frequency == 0:
+            x = random.randint(0, WIDTH - enemy_size[0])
+            y = -enemy_size[1]
+            enemy = pygame.Rect(x, y, *enemy_size)
+            enemies.append(enemy)
+
+        check_collisions()
+
+        if check_game_over():
+            screen.fill(BLACK)
+            font = pygame.font.Font(None, 74)
+            text = font.render("GAME OVER", True, RED)
+            screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+            pygame.display.flip()
+            pygame.time.wait(2000)  # Show game over message for 2 seconds
+            pygame.quit()
+            sys.exit()
+
+        screen.fill(BLACK)
+        draw_player()
+        draw_bullets()
+        draw_asteroids()
+        draw_enemies()
+        draw_score()  # Draw the score
+        pygame.display.flip()
+        clock.tick(30)
+
+        asteroid_timer += 1
+        enemy_timer += 1
+
+if __name__ == "__main__":
+    main()
